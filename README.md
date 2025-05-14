@@ -37,6 +37,7 @@ The extension uses Chrome's sync storage to sync your password and settings betw
 
 ## Version History
 
+- v1.5: Fixed Content Security Policy issues to improve reliability
 - v1.4: Enhanced security to block access to all websites until logged in
 - v1.3: Added sync support between devices
 - v1.2: Added automatic logout on browser close and ChatGPT redirect
