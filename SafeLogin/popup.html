@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SafeLogin</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>SafeLogin</h1>
+    <div id="loginForm">
+      <input type="password" id="password" placeholder="Enter password">
+      <button id="loginButton">Login</button>
+      <p id="message"></p>
+    </div>
+    <div id="settingsForm" style="display: none;">
+      <h2>Settings</h2>
+      <input type="password" id="newPassword" placeholder="New password">
+      <input type="password" id="confirmPassword" placeholder="Confirm password">
+      <button id="saveButton">Save Password</button>
+      <button id="logoutButton">Logout</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
