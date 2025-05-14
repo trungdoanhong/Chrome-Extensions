@@ -89,7 +89,7 @@ function blockIfNotLoggedIn(tabId, url) {
 
 function redirectToLoginPage(tabId) {
   chrome.tabs.update(tabId, {
-    url: chrome.runtime.getURL('loginRedirect.html')
+    url: chrome.runtime.getURL('popup.html')
   });
 }
 

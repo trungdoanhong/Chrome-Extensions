@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>SafeLogin Authentication Required</title>
+  <meta http-equiv="refresh" content="0;url=popup.html">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -30,7 +31,7 @@
       line-height: 1.6;
       margin-bottom: 20px;
     }
-    button {
+    a {
       background-color: #3498db;
       border: none;
       color: white;
@@ -43,7 +44,7 @@
       cursor: pointer;
       border-radius: 4px;
     }
-    button:hover {
+    a:hover {
       background-color: #2980b9;
     }
   </style>
@@ -52,10 +53,8 @@
   <div class="container">
     <h1>Authentication Required</h1>
     <p>Chrome is protected with SafeLogin. You must enter your password to access websites.</p>
-    <p>Please click the button below to go to the login page.</p>
-    <button id="loginButton">Go to Login</button>
+    <p>Please click the link below to go to the login page if you are not redirected automatically.</p>
+    <a href="popup.html">Go to Login</a>
   </div>
-
-  <script src="loginRedirect.js"></script>
 </body>
 </html> 
