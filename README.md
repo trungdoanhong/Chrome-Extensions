@@ -37,6 +37,7 @@ The extension uses Chrome's sync storage to sync your password and settings betw
 
 ## Version History
 
+- v1.9: Enhanced login check on browser startup
 - v1.8: Fixed extension errors by providing minimal redirect page
 - v1.7: Fixed CSP issues by using direct popup redirection
 - v1.6: Fixed Content Security Policy issues with HTML meta refresh
