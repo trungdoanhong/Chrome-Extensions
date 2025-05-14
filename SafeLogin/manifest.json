@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SafeLogin - Chrome Protection",
-  "version": "1.9",
+  "version": "2.0",
   "description": "Protect Chrome with password - Default password: Au - With sync support",
   "permissions": [
     "storage",

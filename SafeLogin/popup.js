@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const saveButton = document.getElementById('saveButton');
   const logoutButton = document.getElementById('logoutButton');
 
+  console.log("SafeLogin Popup: DOM content loaded");
+
   // Handle Enter key in password input
   passwordInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -30,34 +32,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Check login status
   chrome.storage.sync.get(['isLoggedIn'], function(result) {
+    console.log("SafeLogin Popup: Login status check:", result.isLoggedIn);
     if (result.isLoggedIn) {
       showSettings();
     } else {
       showLogin();
+      // Focus on password field immediately
+      passwordInput.focus();
     }
   });
 
   // Handle login
   loginButton.addEventListener('click', function() {
+    console.log("SafeLogin Popup: Login button clicked");
     const password = passwordInput.value;
+    
+    if (!password) {
+      messageElement.textContent = 'Please enter a password';
+      return;
+    }
+    
     chrome.storage.sync.get(['password'], function(result) {
       if (result.password === password) {
         chrome.storage.sync.set({ isLoggedIn: true }, function() {
+          console.log("SafeLogin Popup: Login successful");
+          
           // Notify background script that login was successful
           chrome.runtime.sendMessage({action: "loginSuccess"}, function(response) {
+            console.log("SafeLogin Popup: Background script notified of login");
             showSettings();
             
             // Redirect to ChatGPT after successful login
             chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
               if (tabs[0]) {
+                console.log("SafeLogin Popup: Redirecting current tab to ChatGPT");
                 chrome.tabs.update(tabs[0].id, { url: 'https://chat.openai.com/' });
+                
                 // Also open a new tab with ChatGPT
+                console.log("SafeLogin Popup: Opening new tab with ChatGPT");
                 chrome.tabs.create({ url: 'https://chat.openai.com/' });
+                
+                // Close this popup tab if we're in a tab
+                if (window.location.href.includes(chrome.runtime.getURL(''))) {
+                  console.log("SafeLogin Popup: We're in a tab, not a popup");
+                  // We're in a tab, not in a popup
+                  setTimeout(function() {
+                    window.close();
+                  }, 500);
+                }
               }
             });
           });
         });
       } else {
+        console.log("SafeLogin Popup: Incorrect password");
         messageElement.textContent = 'Incorrect password!';
         passwordInput.value = '';
         passwordInput.focus();
@@ -98,14 +126,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Handle logout
   logoutButton.addEventListener('click', function() {
+    console.log("SafeLogin Popup: Logout button clicked");
     chrome.storage.sync.set({ isLoggedIn: false }, function() {
+      console.log("SafeLogin Popup: Logged out successfully");
       showLogin();
-      // Redirect to login page after logout
-      chrome.tabs.update({ url: chrome.runtime.getURL('loginRedirect.html') });
+      
+      // If we're in a tab, reload it to show login
+      if (window.location.href.includes(chrome.runtime.getURL(''))) {
+        console.log("SafeLogin Popup: Reloading tab");
+        window.location.reload();
+      }
     });
   });
 
   function showSettings() {
+    console.log("SafeLogin Popup: Showing settings");
     loginForm.style.display = 'none';
     settingsForm.style.display = 'block';
     messageElement.textContent = '';
@@ -114,6 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function showLogin() {
+    console.log("SafeLogin Popup: Showing login");
     loginForm.style.display = 'block';
     settingsForm.style.display = 'none';
     passwordInput.value = '';

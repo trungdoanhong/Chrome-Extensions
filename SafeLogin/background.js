@@ -1,29 +1,33 @@
 // Global variables
 let isInitialized = false;
+let loginTabIds = new Set();
 
 // Force check on extension initialization
 (function initialize() {
   console.log("SafeLogin: Extension initialized");
-  // Initialize sync data if needed
-  chrome.storage.sync.get(['isFirstRun', 'isLoggedIn'], function(result) {
-    if (result.isFirstRun === undefined) {
-      chrome.storage.sync.set({
-        isFirstRun: false,
-        password: 'Au',
-        isLoggedIn: false
-      }, function() {
-        console.log("SafeLogin: First run initialization complete");
+  
+  // Force logout on extension load
+  chrome.storage.sync.set({ isLoggedIn: false }, function() {
+    // Initialize sync data if needed
+    chrome.storage.sync.get(['isFirstRun'], function(result) {
+      if (result.isFirstRun === undefined) {
+        chrome.storage.sync.set({
+          isFirstRun: false,
+          password: 'Au',
+          isLoggedIn: false
+        }, function() {
+          console.log("SafeLogin: First run initialization complete");
+          isInitialized = true;
+          forceShowLoginPopup();
+          setTimeout(checkAllTabs, 500);
+        });
+      } else {
+        console.log("SafeLogin: Already initialized, forcing logout");
         isInitialized = true;
-        checkAllTabs();
-      });
-    } else {
-      console.log("SafeLogin: Already initialized, checking login status:", result.isLoggedIn);
-      isInitialized = true;
-      // Force logout on browser restart
-      chrome.storage.sync.set({ isLoggedIn: false }, function() {
-        checkAllTabs();
-      });
-    }
+        forceShowLoginPopup();
+        setTimeout(checkAllTabs, 500);
+      }
+    });
   });
 })();
 
@@ -33,27 +37,29 @@ chrome.runtime.onStartup.addListener(function() {
   // Reset login status when browser starts
   chrome.storage.sync.set({ isLoggedIn: false }, function() {
     console.log("SafeLogin: Logged out on browser startup");
-    checkAllTabs();
+    forceShowLoginPopup();
+    setTimeout(checkAllTabs, 500);
   });
 });
 
 // Check login status when browser starts
 chrome.runtime.onInstalled.addListener(function(details) {
   console.log("SafeLogin: Extension installed or updated", details.reason);
-  if (details.reason === "install") {
-    chrome.storage.sync.set({
-      isFirstRun: false,
-      password: 'Au',
-      isLoggedIn: false
-    }, function() {
-      console.log("SafeLogin: Initial settings on install");
-    });
-  } else if (details.reason === "update") {
-    chrome.storage.sync.set({ isLoggedIn: false }, function() {
+  chrome.storage.sync.set({ isLoggedIn: false }, function() {
+    if (details.reason === "install") {
+      chrome.storage.sync.set({
+        isFirstRun: false,
+        password: 'Au'
+      }, function() {
+        console.log("SafeLogin: Initial settings on install");
+        forceShowLoginPopup();
+      });
+    } else {
       console.log("SafeLogin: Logged out on update");
-    });
-  }
-  setTimeout(checkAllTabs, 1000); // Small delay to ensure everything is loaded
+      forceShowLoginPopup();
+    }
+    setTimeout(checkAllTabs, 1000);
+  });
 });
 
 // Handle window close event - log out when browser is closed
@@ -67,6 +73,14 @@ chrome.windows.onRemoved.addListener(function(windowId) {
   });
 });
 
+// Force open the login popup
+function forceShowLoginPopup() {
+  console.log("SafeLogin: Force showing login popup");
+  chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") }, function(tab) {
+    loginTabIds.add(tab.id);
+  });
+}
+
 // Block all navigation until logged in
 chrome.webNavigation.onBeforeNavigate.addListener(function(details) {
   // Only block main frame navigations (not iframes, etc)
@@ -78,7 +92,17 @@ chrome.webNavigation.onBeforeNavigate.addListener(function(details) {
 // Block new tab creation
 chrome.tabs.onCreated.addListener(function(tab) {
   console.log("SafeLogin: New tab created", tab.id);
-  blockIfNotLoggedIn(tab.id, tab.url || '');
+  chrome.storage.sync.get(['isLoggedIn'], function(result) {
+    if (!result.isLoggedIn) {
+      // If it's not a login tab, redirect
+      if (!tab.pendingUrl || (!tab.pendingUrl.includes(chrome.runtime.getURL("")))) {
+        redirectToLoginPage(tab.id);
+      } else {
+        // This is a login tab, track it
+        loginTabIds.add(tab.id);
+      }
+    }
+  });
 });
 
 // Block tab switching
@@ -99,12 +123,57 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   }
 });
 
+// Add a handler for when a tab is closed
+chrome.tabs.onRemoved.addListener(function(tabId) {
+  // Remove from login tabs if it's there
+  loginTabIds.delete(tabId);
+});
+
+// Add a webRequest listener to block requests
+chrome.webRequest.onBeforeRequest.addListener(
+  function(details) {
+    console.log("SafeLogin: Request detected", details.url);
+    
+    // Skip for extension resources
+    if (details.url.startsWith(chrome.runtime.getURL(""))) {
+      return { cancel: false };
+    }
+    
+    return new Promise(resolve => {
+      chrome.storage.sync.get(['isLoggedIn'], function(result) {
+        if (!result.isLoggedIn) {
+          console.log("SafeLogin: Blocking request", details.url);
+          // If we're not logged in, redirect to login page
+          chrome.tabs.update(details.tabId, { 
+            url: chrome.runtime.getURL("popup.html") 
+          });
+          resolve({ cancel: true });
+        } else {
+          resolve({ cancel: false });
+        }
+      });
+    });
+  },
+  { urls: ["<all_urls>"] },
+  ["blocking"]
+);
+
 function checkAllTabs() {
   console.log("SafeLogin: Checking all tabs");
   chrome.tabs.query({}, function(tabs) {
     console.log("SafeLogin: Found " + tabs.length + " tabs");
-    tabs.forEach(function(tab) {
-      blockIfNotLoggedIn(tab.id, tab.url || '');
+    chrome.storage.sync.get(['isLoggedIn'], function(result) {
+      if (!result.isLoggedIn) {
+        // If not logged in, check all tabs
+        tabs.forEach(function(tab) {
+          if (!tab.url || !tab.url.startsWith(chrome.runtime.getURL(""))) {
+            redirectToLoginPage(tab.id);
+          } else {
+            // This is an extension page, keep track of it
+            loginTabIds.add(tab.id);
+          }
+        });
+      }
     });
   });
 }
@@ -116,10 +185,17 @@ function blockIfNotLoggedIn(tabId, url) {
     return;
   }
   
+  // Skip extension pages
   if (url.startsWith(chrome.runtime.getURL('')) || 
-      url.startsWith('chrome://') ||
+      url === "chrome://newtab/") {
+    console.log("SafeLogin: Skipping blocking for extension URL", url);
+    return;
+  }
+  
+  // Skip Chrome system pages
+  if (url.startsWith('chrome://') ||
       url.startsWith('chrome-extension://')) {
-    console.log("SafeLogin: Skipping blocking for internal URL", url);
+    console.log("SafeLogin: Skipping blocking for Chrome URL", url);
     return;
   }
 
@@ -136,7 +212,17 @@ function blockIfNotLoggedIn(tabId, url) {
 function redirectToLoginPage(tabId) {
   const loginUrl = chrome.runtime.getURL('popup.html');
   console.log("SafeLogin: Redirecting to", loginUrl);
-  chrome.tabs.update(tabId, { url: loginUrl });
+  
+  // Check if this is a login tab already
+  if (loginTabIds.has(tabId)) {
+    console.log("SafeLogin: Tab is already a login tab, not redirecting");
+    return;
+  }
+  
+  chrome.tabs.update(tabId, { url: loginUrl }, function() {
+    // Add this to our login tabs set
+    loginTabIds.add(tabId);
+  });
 }
 
 // Listen for messages from popup
@@ -148,9 +234,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     });
     return true;
   } else if (request.action === "loginSuccess") {
-    // When login is successful, allow all tabs to navigate
+    // When login is successful
     console.log("SafeLogin: Login successful");
-    checkAllTabs();
     sendResponse({status: "success"});
     return true;
   }
