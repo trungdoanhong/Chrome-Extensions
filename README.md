@@ -37,6 +37,7 @@ The extension uses Chrome's sync storage to sync your password and settings betw
 
 ## Version History
 
+- v1.7: Fixed CSP issues by using direct popup redirection
 - v1.6: Fixed Content Security Policy issues with HTML meta refresh
 - v1.5: Fixed Content Security Policy issues to improve reliability
 - v1.4: Enhanced security to block access to all websites until logged in
