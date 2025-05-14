@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SafeLogin - Chrome Protection",
-  "version": "2.0",
+  "version": "2.1",
   "description": "Protect Chrome with password - Default password: Au - With sync support",
   "permissions": [
     "storage",
@@ -9,7 +9,8 @@
     "webNavigation",
     "scripting",
     "windows",
-    "webRequest"
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "<all_urls>"

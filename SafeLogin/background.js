@@ -18,18 +18,72 @@ let loginTabIds = new Set();
         }, function() {
           console.log("SafeLogin: First run initialization complete");
           isInitialized = true;
+          
+          // Set up network blocking rules immediately
+          setupNetworkBlocking(false);
+          
+          // Force show login popup
           forceShowLoginPopup();
-          setTimeout(checkAllTabs, 500);
+          setTimeout(checkAllTabs, 100);
         });
       } else {
         console.log("SafeLogin: Already initialized, forcing logout");
         isInitialized = true;
+        
+        // Set up network blocking rules immediately
+        setupNetworkBlocking(false);
+        
+        // Force show login popup
         forceShowLoginPopup();
-        setTimeout(checkAllTabs, 500);
+        setTimeout(checkAllTabs, 100);
       }
     });
   });
 })();
+
+// Set up network request blocking
+function setupNetworkBlocking(isLoggedIn) {
+  console.log("SafeLogin: Setting up network blocking, isLoggedIn =", isLoggedIn);
+  
+  try {
+    // Clear any existing rules
+    chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [1]
+    }).then(() => {
+      // If not logged in, add rule to block all requests
+      if (!isLoggedIn) {
+        const extURL = chrome.runtime.getURL('');
+        const rule = {
+          id: 1,
+          priority: 1,
+          action: {
+            type: "redirect",
+            redirect: {url: chrome.runtime.getURL('popup.html')}
+          },
+          condition: {
+            urlFilter: '*',
+            excludedInitiatorDomains: ['chrome-extension'],
+            resourceTypes: ['main_frame']
+          }
+        };
+        
+        chrome.declarativeNetRequest.updateDynamicRules({
+          addRules: [rule]
+        }).then(() => {
+          console.log("SafeLogin: Network blocking rule added successfully");
+        }).catch(err => {
+          console.error("SafeLogin: Error adding network blocking rule:", err);
+        });
+      } else {
+        console.log("SafeLogin: No blocking rules added as user is logged in");
+      }
+    }).catch(err => {
+      console.error("SafeLogin: Error clearing network blocking rules:", err);
+    });
+  } catch (e) {
+    console.error("SafeLogin: Error in setupNetworkBlocking:", e);
+  }
+}
 
 // Check login status when extension starts
 chrome.runtime.onStartup.addListener(function() {
@@ -37,6 +91,7 @@ chrome.runtime.onStartup.addListener(function() {
   // Reset login status when browser starts
   chrome.storage.sync.set({ isLoggedIn: false }, function() {
     console.log("SafeLogin: Logged out on browser startup");
+    setupNetworkBlocking(false);
     forceShowLoginPopup();
     setTimeout(checkAllTabs, 500);
   });
@@ -52,10 +107,12 @@ chrome.runtime.onInstalled.addListener(function(details) {
         password: 'Au'
       }, function() {
         console.log("SafeLogin: Initial settings on install");
+        setupNetworkBlocking(false);
         forceShowLoginPopup();
       });
     } else {
       console.log("SafeLogin: Logged out on update");
+      setupNetworkBlocking(false);
       forceShowLoginPopup();
     }
     setTimeout(checkAllTabs, 1000);
@@ -69,6 +126,7 @@ chrome.windows.onRemoved.addListener(function(windowId) {
       // All windows closed, log out
       console.log("SafeLogin: All windows closed, logging out");
       chrome.storage.sync.set({ isLoggedIn: false });
+      setupNetworkBlocking(false);
     }
   });
 });
@@ -128,35 +186,6 @@ chrome.tabs.onRemoved.addListener(function(tabId) {
   // Remove from login tabs if it's there
   loginTabIds.delete(tabId);
 });
-
-// Add a webRequest listener to block requests
-chrome.webRequest.onBeforeRequest.addListener(
-  function(details) {
-    console.log("SafeLogin: Request detected", details.url);
-    
-    // Skip for extension resources
-    if (details.url.startsWith(chrome.runtime.getURL(""))) {
-      return { cancel: false };
-    }
-    
-    return new Promise(resolve => {
-      chrome.storage.sync.get(['isLoggedIn'], function(result) {
-        if (!result.isLoggedIn) {
-          console.log("SafeLogin: Blocking request", details.url);
-          // If we're not logged in, redirect to login page
-          chrome.tabs.update(details.tabId, { 
-            url: chrome.runtime.getURL("popup.html") 
-          });
-          resolve({ cancel: true });
-        } else {
-          resolve({ cancel: false });
-        }
-      });
-    });
-  },
-  { urls: ["<all_urls>"] },
-  ["blocking"]
-);
 
 function checkAllTabs() {
   console.log("SafeLogin: Checking all tabs");
@@ -236,6 +265,19 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   } else if (request.action === "loginSuccess") {
     // When login is successful
     console.log("SafeLogin: Login successful");
+    
+    // Update network blocking rules
+    setupNetworkBlocking(true);
+    
+    sendResponse({status: "success"});
+    return true;
+  } else if (request.action === "logoutSuccess") {
+    // When logout is successful
+    console.log("SafeLogin: Logout successful");
+    
+    // Update network blocking rules
+    setupNetworkBlocking(false);
+    
     sendResponse({status: "success"});
     return true;
   }

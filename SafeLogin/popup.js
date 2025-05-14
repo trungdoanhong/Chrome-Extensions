@@ -129,13 +129,18 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("SafeLogin Popup: Logout button clicked");
     chrome.storage.sync.set({ isLoggedIn: false }, function() {
       console.log("SafeLogin Popup: Logged out successfully");
-      showLogin();
       
-      // If we're in a tab, reload it to show login
-      if (window.location.href.includes(chrome.runtime.getURL(''))) {
-        console.log("SafeLogin Popup: Reloading tab");
-        window.location.reload();
-      }
+      // Notify background script about logout
+      chrome.runtime.sendMessage({action: "logoutSuccess"}, function(response) {
+        console.log("SafeLogin Popup: Background script notified of logout");
+        showLogin();
+        
+        // If we're in a tab, reload it to show login
+        if (window.location.href.includes(chrome.runtime.getURL(''))) {
+          console.log("SafeLogin Popup: Reloading tab");
+          window.location.reload();
+        }
+      });
     });
   });
 
