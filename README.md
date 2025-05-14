@@ -7,6 +7,7 @@ A Chrome extension that protects your browser with password authentication.
 - Password protection for Chrome browser
 - Default password: "Au"
 - Requires login after closing and reopening browser
+- Completely blocks access to all websites until logged in
 - Redirects to ChatGPT.com after successful login
 - Password can be changed in settings
 - Supports data syncing between devices using Chrome Sync
@@ -36,6 +37,7 @@ The extension uses Chrome's sync storage to sync your password and settings betw
 
 ## Version History
 
+- v1.4: Enhanced security to block access to all websites until logged in
 - v1.3: Added sync support between devices
 - v1.2: Added automatic logout on browser close and ChatGPT redirect
 - v1.1: Improved password change functionality

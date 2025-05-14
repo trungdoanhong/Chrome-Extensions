@@ -43,15 +43,18 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.storage.sync.get(['password'], function(result) {
       if (result.password === password) {
         chrome.storage.sync.set({ isLoggedIn: true }, function() {
-          showSettings();
-          
-          // Redirect to ChatGPT after successful login
-          chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (tabs[0]) {
-              chrome.tabs.update(tabs[0].id, { url: 'https://chat.openai.com/' });
-              // Also open a new tab with ChatGPT
-              chrome.tabs.create({ url: 'https://chat.openai.com/' });
-            }
+          // Notify background script that login was successful
+          chrome.runtime.sendMessage({action: "loginSuccess"}, function(response) {
+            showSettings();
+            
+            // Redirect to ChatGPT after successful login
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+              if (tabs[0]) {
+                chrome.tabs.update(tabs[0].id, { url: 'https://chat.openai.com/' });
+                // Also open a new tab with ChatGPT
+                chrome.tabs.create({ url: 'https://chat.openai.com/' });
+              }
+            });
           });
         });
       } else {
@@ -98,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.storage.sync.set({ isLoggedIn: false }, function() {
       showLogin();
       // Redirect to login page after logout
-      chrome.tabs.update({ url: chrome.runtime.getURL('popup.html') });
+      chrome.tabs.update({ url: chrome.runtime.getURL('loginRedirect.html') });
     });
   });
 

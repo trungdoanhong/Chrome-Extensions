@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "SafeLogin - Chrome Protection",
-  "version": "1.3",
+  "version": "1.4",
   "description": "Protect Chrome with password - Default password: Au - With sync support",
   "permissions": [
     "storage",
     "tabs",
     "webNavigation",
     "scripting",
-    "windows"
+    "windows",
+    "webRequest"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -25,6 +26,12 @@
       "128": "images/icon128.png"
     }
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["loginRedirect.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "chrome_url_overrides": {
     "newtab": "popup.html"
   }
