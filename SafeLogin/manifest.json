@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SafeLogin - Chrome Protection",
-  "version": "1.7",
+  "version": "1.8",
   "description": "Protect Chrome with password - Default password: Au - With sync support",
   "permissions": [
     "storage",
@@ -28,7 +28,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["popup.html"],
+      "resources": ["popup.html", "loginRedirect.html"],
       "matches": ["<all_urls>"]
     }
   ],
